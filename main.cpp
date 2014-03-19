@@ -73,20 +73,18 @@ int main(int argc, char *argv[])
 		strtok(NULL, ":");
 		ln = atoi(strtok(NULL, ":"));
 		
-		// Load total lines into array sam
+		// Load total lines into vector sam
 		
 		vector<SamLine> sam(ln);
-		getline(file, line);
-		sam.at(0).readInfo(line);
 		cout << sam.at(0).flag << " KByte" << endl;
 
 
 		
 		int i = 0;
 		while(getline(file, line))
-		{	/*
-			sam[i].readInfo(line);
-			i++;*/
+		{	
+			sam.at(i).readInfo(line);
+			i++;
 		}
 
 		/*

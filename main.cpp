@@ -6,59 +6,12 @@
 #include <vector>
 #include <stdlib.h>
 #include "utility.h"
+#include <math.h>
+#include "bio.h"
 using namespace std;
-
-class SamLine{
-	public:
-		// Info reads
-		//char *qname;
-		int flag;
-		//char *chromo;
-		int pos;
-		int mapq;
-		int cigar;
-		//char *mrnm;
-		int mpos;
-		int size;
-		//char *seq;
-		//char *qual;
-
-		int vFlag[7];
-
-		void readInfo(string l);
-		void flagToBinaryVector();
-};
-
-
-void SamLine::readInfo(string l)
-{
-	char * line = stc(l);
-	/*qname = */strtok(line, "\t");
-	flag = atoi(strtok(NULL, "\t"));
-	/*chromo = */strtok(NULL, "\t");
-	pos = atoi(strtok(NULL, "\t"));
-	mapq = atoi(strtok(NULL, "\t"));
-	cigar = atoi(strtok(NULL, "\t"));
-	/*mrnm = */strtok(NULL, "\t");
-	mpos = atoi(strtok(NULL, "\t"));
-	size = atoi(strtok(NULL, "\t"));
-	//seq = strtok(NULL, "\t");
-	//qual = strtok(NULL, "\t");
-}
-
-void SamLine::flagToBinaryVector()
-{
-	for (int i = 0; i < 7; ++i) 
-	{  // assuming a 7 bit int
-    	vFlag[i] = flag & (1 << i) ? 1 : 0;
-    }
-}
-
-
 
 int main(int argc, char *argv[])
 {
-	
 	ifstream file ("../bioinfo/illumina.sam");
 	if(file.is_open())
 	{
@@ -67,58 +20,67 @@ int main(int argc, char *argv[])
 		getline(file, line);
 		cout << "HEADER: " << line << endl;
 
-		// number of reads
-		int ln;
+		// number of reads for size of array
 		strtok(stc(line), ":");
 		strtok(NULL, ":");
-		ln = atoi(strtok(NULL, ":"));
+		int ln = atoi(strtok(NULL, ":"));
+		
+		// Statistic informations
+		long int sumSizes = 0;
+		int totalReadsLoads = 0;
+		int mappedReads = 0;
+		int notMappedReads = 0;
+		float st_dev;
+		float mean;
 		
 		// Load total lines into vector sam
-		
 		vector<SamLine> sam(ln);
-		cout << sam.at(0).flag << " KByte" << endl;
-
-
-		
 		int i = 0;
+		int count = 0;
 		while(getline(file, line))
 		{	
 			sam.at(i).readInfo(line);
+
+			// Conditions
+			if(strcmp(sam.at(i).cigar, "*"))
+			{ // Mapped read
+				mappedReads++;
+				
+				if(i == 0 || abs(sam.at(i).size) < 2*mean)
+				{
+					count++;
+					sumSizes += abs(sam.at(i).size);
+					mean = (float) sumSizes / count;
+				}
+			}
 			i++;
 		}
 
-		/*
-		// Statistic informations
-		long int totalReads = 0;
-		long int pairedReads = 0;
-		long int notMappedReads = 0;
-		
-		while(getline(file,line))
+		// Total reads load from file
+		totalReadsLoads = i;
+
+		//print info
+		cout << "Total reads = " << totalReadsLoads << endl;
+		cout << "Mapped reads = " << mappedReads << endl;
+		cout << "Mean size = " << mean << endl;
+
+		// Calculate st_dev
+
+		int * bases = new int[ln]();
+		long int sum_st_dev = 0;
+		for(i = 0; i < totalReadsLoads; i++)
 		{
-			sam[i-1].readInfo(line);
+			if(strcmp(sam.at(i).cigar, "*") &&
+				abs(sam.at(i).size) < 2*mean )
+				sum_st_dev += pow(abs(sam.at(i).size) - mean  ,2);
+			
+			
 
-		
-			//SamLine sl;
-			//sl.readInfo(line);
-			
-			if(sl.size > 0)
-				sumSize = sumSize + sl.size;
-			else if (sl.size < 0)
-				sumSize = sumSize - sl.size;
-				
-			else
-			{
-				continue;
-			} 
-			
-			
-			totalLines++;
-			
-		}*/
+		}
+		st_dev = sqrt(sum_st_dev / mappedReads);
+		cout << "Standard deviation = " << st_dev << endl;
+
 		file.close();
-
-		//int media = sumSize / totalLines;
-		//cout << sumSize << "/" << totalLines << " = " << media << endl;
 	}
 	return 0;
 }

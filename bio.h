@@ -53,7 +53,7 @@ public:
 	int uniqueR;
 	int multiR;
 	int phisC;
-	int readStr
+	int readStr;
 	int readRev;
 
 

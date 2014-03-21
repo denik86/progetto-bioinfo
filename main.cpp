@@ -10,9 +10,21 @@
 #include "bio.h"
 using namespace std;
 
-int main(int argc, char *argv[])
+// Statistic informations
+int ln; // number of reads writed on file
+int totalReadsLoads = 0; // number of reads loaded
+int mappedReads = 0;
+int notMappedReads = 0;
+float st_dev;
+float mean;
+
+//Data Structures
+vector<SamLine> sam; // Vector of lines from Sam file
+int * bases; // quantitative info of each base
+
+void loadData(const char* path, int valueOutlier)
 {
-	ifstream file ("../bioinfo/illumina.sam");
+	ifstream file (path);
 	if(file.is_open())
 	{
 		cout << "*** Sam file opened! ***" << endl;
@@ -20,67 +32,77 @@ int main(int argc, char *argv[])
 		getline(file, line);
 		cout << "HEADER: " << line << endl;
 
-		// number of reads for size of array
+		// number of reads writed on file Sam
 		strtok(stc(line), ":");
 		strtok(NULL, ":");
-		int ln = atoi(strtok(NULL, ":"));
-		
-		// Statistic informations
-		long int sumSizes = 0;
-		int totalReadsLoads = 0;
-		int mappedReads = 0;
-		int notMappedReads = 0;
-		float st_dev;
-		float mean;
+		ln = atoi(strtok(NULL, ":"));
 		
 		// Load total lines into vector sam
-		vector<SamLine> sam(ln);
-		int i = 0;
 		int count = 0;
+		long int sumSizes = 0;
 		while(getline(file, line))
 		{	
-			sam.at(i).readInfo(line);
+			SamLine sl;
+			sl.readInfo(line);
+			sam.push_back(sl);
 
 			// Conditions
-			if(strcmp(sam.at(i).cigar, "*"))
+			if(strcmp(sl.cigar, "*"))
 			{ // Mapped read
 				mappedReads++;
-				
-				if(i == 0 || abs(sam.at(i).size) < 2*mean)
+				if(count == 0 || abs(sl.size) < valueOutlier*mean)
 				{
 					count++;
-					sumSizes += abs(sam.at(i).size);
+					sumSizes += abs(sl.size);
 					mean = (float) sumSizes / count;
 				}
 			}
-			i++;
+			else
+				notMappedReads++;
+			
 		}
 
 		// Total reads load from file
-		totalReadsLoads = i;
+		totalReadsLoads = sam.size();
 
 		//print info
 		cout << "Total reads = " << totalReadsLoads << endl;
 		cout << "Mapped reads = " << mappedReads << endl;
+		cout << "Not mapped reads = " << notMappedReads << endl;
 		cout << "Mean size = " << mean << endl;
-
-		// Calculate st_dev
-
-		int * bases = new int[ln]();
-		long int sum_st_dev = 0;
-		for(i = 0; i < totalReadsLoads; i++)
-		{
-			if(strcmp(sam.at(i).cigar, "*") &&
-				abs(sam.at(i).size) < 2*mean )
-				sum_st_dev += pow(abs(sam.at(i).size) - mean  ,2);
-			
-			
-
-		}
-		st_dev = sqrt(sum_st_dev / mappedReads);
-		cout << "Standard deviation = " << st_dev << endl;
 
 		file.close();
 	}
-	return 0;
+	else
+	{
+		cout << "Errore file" << endl;
+	}
+}
+
+
+
+int main(int argc, char *argv[])
+{
+	
+		loadData("../bioinfo/illumina.sam", 2);
+		
+		
+		// Calculate st_dev
+		long int sum_st_dev = 0;
+		int count = 0;
+		for(int i = 0; i < totalReadsLoads; i++)
+		{
+			if(strcmp(sam.at(i).cigar, "*") &&
+				abs(sam.at(i).size) < 1.8*mean )
+				 {
+				 	sum_st_dev += pow(abs(sam.at(i).size) - mean  ,2);
+				 	count++;
+
+				 }
+		}
+		st_dev = sqrt(sum_st_dev / count);
+		cout << "Standard deviation = " << st_dev << endl;
+
+	
+	return 0; 
 }

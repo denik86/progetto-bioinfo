@@ -206,7 +206,10 @@ void wrongMate(const char *path)
 	for(int i = 0; i < sam.size(); i++)
 		if(strcmp(sam[i].cigar, "*"))
 		{  
-
+/* inserire parte che controlla che 
+* le 2 read mate siano nella stessa direzione
+* e contare le basi che hanno questo tipo di 
+* orientamento. */
 
 		}
 }

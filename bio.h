@@ -3,41 +3,51 @@
 class SamLine{
 public:
 	// Info reads
-	//char *qname;
+	char *name;
+	int num;
 	int flag;
-	//char *chromo;
+	char *chromo;
 	int pos;
 	int mapq;
 	char *cigar;
-	//char *mrnm;
+	char *mrnm;
 	int mpos;
 	int size;
-	//char *seq;
-	//char *qual;
+	char *seq;
+	char *qual;
 
 	int vFlag[12];
 
 	void readInfo(string l);
 	void flagToBinaryVector();
+	bool valid();
 };
 
+// Verify that read is valid (cigar != *)
+bool SamLine::valid()
+{
+	return strcmp(cigar, "*");
+}
 
 void SamLine::readInfo(string l)
 {
 	char * line = stc(l);
-	/*qname = */strtok(line, "\t");
+	name = strtok(line, "\t");
 	flag = atoi(strtok(NULL, "\t"));
 	flagToBinaryVector();
-	/*chromo = */strtok(NULL, "\t");
+	chromo = strtok(NULL, "\t");
 	pos = atoi(strtok(NULL, "\t"));
 	mapq = atoi(strtok(NULL, "\t"));
 	cigar = strtok(NULL, "\t");
-	/*mrnm = */strtok(NULL, "\t");
+	mrnm = strtok(NULL, "\t");
 	mpos = atoi(strtok(NULL, "\t"));
 	size = atoi(strtok(NULL, "\t"));
-	//seq = strtok(NULL, "\t");
-	//qual = strtok(NULL, "\t");
+	seq = strtok(NULL, "\t");
+	qual = strtok(NULL, "\t");
 
+	
+	name = strtok(name, "/");
+	num = atoi(strtok(NULL, "/"));
 }
 
 void SamLine::flagToBinaryVector()
@@ -47,16 +57,3 @@ void SamLine::flagToBinaryVector()
     	vFlag[i] = flag & (1 << i) ? 1 : 0;
     }
 }
-
-class BaseInfo {
-public:
-	int uniqueR;
-	int multiR;
-	int phisC;
-	int readStr;
-	int readRev;
-
-
-
-
-};

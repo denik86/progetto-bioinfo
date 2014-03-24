@@ -57,7 +57,7 @@ void loadData(const char* path, int valueOutlier, int lenghtRead)
 			sam.push_back(sl);
 
 			// Conditions
-			if(strcmp(sl.cigar, "*"))
+			if(sl.valid())
 			{ // Mapped read
 				mappedReads++;
 				if(count == 0 || abs(sl.size) < valueOutlier*mean)
@@ -105,7 +105,6 @@ void st_dev()
 	cout << "Standard deviation = " << sd << endl;
 }
 
-
 void physicalCov(const char * path)
 {
 	// quantitative info of each base
@@ -117,12 +116,10 @@ void physicalCov(const char * path)
 		if(sam[i].valid())
 		{
 			// for each read iterate all position base
-			int pos = sam.at(i).pos;
-			for(int j = pos; j < pos+l; j++)
-				bases[j]++;
+			for(int j = 0; j < l; j++)
+				bases[sam[i].pos + j]++;
 		}
 	}
-
 	wig(bases, ln, path);
 	bases.clear();
 }
@@ -192,37 +189,71 @@ void orientation(const char * path, int orientFlag)
 		cout << "DONE." << endl;
 	}
 	else
-		cout << "ERROR orientFlag"<< endl;
-
+		cout << "ERROR setting orientFlag"<< endl;
 }
 
+/* La funzione esegue correttamente il calcolo se:
+- viene caricato un file sam che NON contiene /n dopo il qname
+  e le read sono accoppiate una dopo l'altra
+  */
 void wrongMate(const char *path)
 {
-	cout << "Analisys of wrong mate pair orientation ... " << flush;
-	vector<int> totBase(ln, 0);
-	vector<int> orBase(totBase);
+	cout << "Analisys of WRONG mate pair orientation ... " << flush;
+	vector<int> base(ln, 0);
 
 	// iterate all the reads
-	for(int i = 0; i < sam.size(); i++)
-		if(strcmp(sam[i].cigar, "*"))
-		{  
-/* inserire parte che controlla che 
-* le 2 read mate siano nella stessa direzione
-* e contare le basi che hanno questo tipo di 
-* orientamento. */
-
+	int i = 0;
+	int count = 0;
+	while (i < sam.size()-1)
+		if(sam[i].valid() 
+			&& !strcmp(sam[i].name, sam[i+1].name)
+			&& sam[i].vFlag[2] == 0 
+			&& sam[i].vFlag[3] == 0 )
+		{
+			if(sam[i].vFlag[4] == sam[i].vFlag[5])
+			{
+				for(int j = 0; j < l; j++)
+				{
+					base[sam[i].pos + j]++;
+					base[sam[i+1].pos + j]++;
+				}
+			}
+			i += 2;
 		}
+		else
+			i++;
+
+	wig(base, ln, path);
+	base.clear();
+	cout << "DONE." << endl;
+}
+
+void singleMate(const char *path)
+{
+	cout << "Analisys of SINGLE mate ... " << flush;
+	vector<int> base(ln, 0);
+
+	int i = 0;
+	for(int i = 0; i < sam.size(); i++)
+	{
+		if(sam[i].valid() && sam[i].vFlag[3] == 1)
+			base[sam[i].pos]++;
+	}
+	wig(base, ln, path);
+	base.clear();
+	cout << "DONE." << endl;
 }
 
 int main(int argc, char *argv[])
 {
-	cout << "cls()" << endl;
-	loadData("../bioinfo/allname.sam", 2, 50);
-	multiCoverage("multiple.wig");
+	loadData("../bioinfo/illumina.sam", 2, 50);
+	//multiCoverage("multiple.wig");
 	//st_dev();
-	physicalCov("physicalCoverage.wig");
+	//physicalCov("physicalCoverage.wig");
 	//orientation("right.wig", 0);
 	//orientation("left.wig", 1);
+	wrongMate("wrong.wig");
+	//singleMate("single.wig");
 
 	return 0; 
 }

@@ -26,7 +26,7 @@ public:
 // Verify that read is valid (cigar != *)
 bool SamLine::valid()
 {
-	return strcmp(cigar, "*");
+	return strcmp(chromo, "*");
 }
 
 void SamLine::readInfo(string l)
@@ -44,10 +44,11 @@ void SamLine::readInfo(string l)
 	size = atoi(strtok(NULL, "\t"));
 	seq = strtok(NULL, "\t");
 	qual = strtok(NULL, "\t");
-
 	
 	name = strtok(name, "/");
-	num = atoi(strtok(NULL, "/"));
+	num = atoi(strtok(name, "/"));
+
+
 }
 
 void SamLine::flagToBinaryVector()

@@ -9,18 +9,22 @@ public:
 	char *chromo;
 	int pos;
 	int mapq;
-	char *cigar;
+	string cigar;
 	char *mrnm;
 	int mpos;
 	int size;
 	char *seq;
 	char *qual;
 
+	int lenght;
+	vector<int> match;
+
 	int vFlag[12];
 
 	void readInfo(string l);
 	void flagToBinaryVector();
 	bool valid();
+	int cigarValues();
 };
 
 // Verify that read is valid (cigar != *)
@@ -48,6 +52,7 @@ void SamLine::readInfo(string l)
 	name = strtok(name, "/");
 	num = atoi(strtok(name, "/"));
 
+	lenght = cigarValues();
 
 }
 
@@ -57,4 +62,39 @@ void SamLine::flagToBinaryVector()
 	{  // assuming a 7 bit int
     	vFlag[i] = flag & (1 << i) ? 1 : 0;
     }
+}
+
+int SamLine::cigarValues()
+{ 
+	int count = 0;
+	for(int i = 0; i < cigar.size(); i++)
+	{
+		if (isalpha(cigar[i]))
+		{
+			char letter = cigar[i];
+		  	int number = atoi(cigar.substr(i-count, i).c_str());
+		  	
+		  	if(letter == 'M')
+		  	{ 
+		  		for(int j = 0; j < number; j++)
+		  		{
+		  			match.push_back(1);
+		  		}
+		  	}
+		  	else if(letter == 'D')
+		  	{
+		  		for(int j = 0; j < number; j++)
+		  		{
+		  			match.push_back(0);
+		  		}
+		  	}
+		  	else {  /* non fai nulla */ }
+		  	count = 0;
+		}
+		else 
+			count++;
+
+	}
+	return match.size();
+	
 }

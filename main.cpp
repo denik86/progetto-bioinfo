@@ -14,7 +14,6 @@ using namespace std;
 // Statistic informations
 int ln; // lenght of reference genome
 int nReads = 0; // number of reads loaded
-int l;
 int mappedReads = 0;
 int notMappedReads = 0;
 float mean;
@@ -23,7 +22,7 @@ float sd;
 //Data Structures
 vector<SamLine> sam; // Vector of lines from Sam file
 
-void loadData(const char* path, int valueOutlier, int lenghtRead)
+void loadData(const char* path, int valueOutlier)
 {
 	ifstream file (path);
 	if(file.is_open())
@@ -73,7 +72,7 @@ void loadData(const char* path, int valueOutlier, int lenghtRead)
 
 		// Total reads load from file
 		nReads = sam.size();
-		l = lenghtRead;
+
 
 		//print info
 		cout << "Total reads = " << nReads << endl;
@@ -94,8 +93,8 @@ void st_dev()
 	int count = 0;
 	for(int i = 0; i < nReads; i++)
 	{
-		if(strcmp(sam.at(i).cigar, "*") &&
-			abs(sam.at(i).size) < 1.8*mean )
+		if(sam[i].valid() && sam[i].size > 0 &&
+			sam[i].size < 2*mean )
 			 {
 			 	sum_st_dev += pow(abs(sam.at(i).size) - mean  ,2);
 			 	count++;
@@ -116,12 +115,46 @@ void physicalCov(const char * path)
 		if(sam[i].valid())
 		{
 			// for each read iterate all position base
-			for(int j = 0; j < l; j++)
-				bases[sam[i].pos + j]++;
+			for(int j = 0; j < sam[i].lenght; j++)
+				bases[sam[i].pos + j] += sam[i].match[j];
 		}
 	}
 	wig(bases, ln, path);
 	bases.clear();
+}
+
+void sequenceCov(const char * pathCoverage, const char *pathAvLenght)
+{
+	cout << "Analisys of sequence coverage and average lenght inserts ... " << flush;
+	// quantitative info of each base
+	vector<int> count(ln, 0);
+	vector<int> lenght(ln, 0);
+	
+	// iterate all the reads
+	for(int i = 0; i < sam.size(); i++)
+	{
+		if(sam[i].valid() && sam[i].size > 0)
+		{
+			// for each read iterate all position base
+			for(int j = 0; j < sam[i].size; j++)
+			{
+				count[sam[i].pos + j]++;
+				lenght[sam[i].pos + j] += sam[i].size;
+			}
+		}
+	}
+
+	for(int i = 0; i < ln; i++)
+	{
+		if (count[i] == 0) continue;
+		lenght[i] = lenght[i] /count[i];
+	}
+	wig(count, ln, pathCoverage);
+	wig(lenght, ln, pathAvLenght);
+	count.clear();
+	lenght.clear();
+	cout << "DONE." << endl;
+
 }
 
 /* This function IMPLIED that the reads in the sam file
@@ -135,12 +168,13 @@ void multiCoverage(const char * path)
 		if(i > 0 && strcmp(sam[i].name, sam[i-1].name) == 0 &&
 			sam[i].num == sam[i-1].num)
 		{ // two reads are the same
-			int pos1 = sam[i-1].pos;
-			int pos2 = sam[i].pos;
-			for (int i = 0; i < l; i++)
+			for (int j = 0; j < sam[i].lenght; j++)
 			{
-				bases[i+pos1]++;
-				bases[i+pos2]++;
+				bases[sam[i].pos + j] += sam[i].match[j];
+			}
+			for (int j = 0; j < sam[i-1].lenght; j++)
+			{
+				bases[sam[i-1].pos + j] += sam[i-1].match[j];
 			}
 		}
 	}
@@ -148,48 +182,6 @@ void multiCoverage(const char * path)
 	wig(bases, ln, path);
 	bases.clear();
 	cout << "DONE." << endl;
-}
-
-void orientation(const char * path, int orientFlag)
-{
-	if(orientFlag == 0 || orientFlag == 1)
-	{
-		cout << "Analisys of reads orientation " <<
-		orientFlag << " ... " << flush;
-
-		// quantitative info of each base
-		vector<int> totBase(ln, 0);
-		vector<int> orBase(totBase);
-
-		// iterate all the reads
-		for(int i = 0; i < sam.size(); i++)
-			if(sam[i].valid())
-			{  
-				int pos = sam[i].pos;
-				for(int j = pos; j < pos+l; j++)
-				{
-					orBase[j] += (sam[i].vFlag[4] == orientFlag);
-					totBase[j]++;
-				}
-			}
-
-		vector<float> percent(ln, 0);
-		for(int j = 0; j < ln; j++)
-		{
-			if(totBase[j] == 0)
-				continue;
-			percent[j] = ((float) orBase[j] / totBase[j]) * 100;
-		}
-
-		wig(percent, ln, path);
-		totBase.clear();
-		orBase.clear();
-		percent.clear();
-
-		cout << "DONE." << endl;
-	}
-	else
-		cout << "ERROR setting orientFlag"<< endl;
 }
 
 /* La funzione esegue correttamente il calcolo se:
@@ -203,26 +195,27 @@ void wrongMate(const char *path)
 
 	// iterate all the reads
 	int i = 0;
-	int count = 0;
 	while (i < sam.size()-1)
-		if(sam[i].valid() 
-			&& !strcmp(sam[i].name, sam[i+1].name)
-			&& sam[i].vFlag[2] == 0 
-			&& sam[i].vFlag[3] == 0 )
+		if(sam[i].valid() && sam[i+1].valid()
+			&& !strcmp(sam[i].name, sam[i+1].name))
+			//&& sam[i].vFlag[2] == 0 
+			//&& sam[i].vFlag[3] == 0 )
 		{
-			if(sam[i].vFlag[4] == sam[i].vFlag[5])
+			if(sam[i].vFlag[4] == sam[i+1].vFlag[4])
 			{
-				for(int j = 0; j < l; j++)
+				for(int j = 0; j < sam[i].lenght; j++)
 				{
-					base[sam[i].pos + j]++;
-					base[sam[i+1].pos + j]++;
+					base[sam[i].pos + j] += sam[i].match[j];
+				}
+				for(int j = 0; j < sam[i+1].lenght; j++)
+				{
+					base[sam[i+1].pos + j] += sam[i+1].match[j];
 				}
 			}
 			i += 2;
 		}
 		else
 			i++;
-
 	wig(base, ln, path);
 	base.clear();
 	cout << "DONE." << endl;
@@ -237,23 +230,26 @@ void singleMate(const char *path)
 	for(int i = 0; i < sam.size(); i++)
 	{
 		if(sam[i].valid() && sam[i].vFlag[3] == 1)
+		{
 			base[sam[i].pos]++;
+		}
 	}
 	wig(base, ln, path);
 	base.clear();
 	cout << "DONE." << endl;
 }
 
+
 int main(int argc, char *argv[])
 {
-	loadData("../bioinfo/illumina.sam", 2, 50);
+	loadData("../bioinfo/illumina.sam", 2);
 	//multiCoverage("multiple.wig");
 	//st_dev();
-	//physicalCov("physicalCoverage.wig");
-	//orientation("right.wig", 0);
-	//orientation("left.wig", 1);
+	physicalCov("physicalCoverage.wig");
+	sequenceCov("sequenceCoverage.wig", "averageLenght.wig");
 	wrongMate("wrong.wig");
-	//singleMate("single.wig");
+	
+	singleMate("single.wig");
 
 	return 0; 
 }

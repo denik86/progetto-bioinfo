@@ -13,7 +13,6 @@ using namespace std;
 
 // Statistic informations
 int ln; // lenght of reference genome
-int nReads = 0; // number of reads loaded
 int mappedReads = 0;
 int notMappedReads = 0;
 float mean;
@@ -70,15 +69,11 @@ void loadData(const char* path, int valueOutlier)
 				notMappedReads++;
 		}
 
-		// Total reads load from file
-		nReads = sam.size();
-
-
 		//print info
-		cout << "Total reads = " << nReads << endl;
-		cout << "Mapped reads = " << mappedReads << endl;
-		cout << "Not mapped reads = " << notMappedReads << endl;
-		cout << "Mean size = " << mean << endl;
+		cout << "** Total reads = " << sam.size() << endl;
+		cout << "** Mapped reads = " << mappedReads << endl;
+		cout << "** Not mapped reads = " << notMappedReads << endl;
+		cout << "** Mean size = " << mean << "\n" << endl;
 
 		file.close();
 	}
@@ -89,23 +84,31 @@ void loadData(const char* path, int valueOutlier)
 
 void st_dev()
 {
-	long int sum_st_dev = 0;
-	int count = 0;
-	for(int i = 0; i < nReads; i++)
+	if(mean == 0)
 	{
-		if(sam[i].valid() && sam[i].size > 0 &&
-			sam[i].size < 2*mean )
-			 {
-			 	sum_st_dev += pow(abs(sam.at(i).size) - mean  ,2);
-			 	count++;
-			 }
+		cout <<"ERROR: La media è nulla" << endl;
 	}
-	sd = sqrt(sum_st_dev / count);
-	cout << "Standard deviation = " << sd << endl;
+	else
+	{
+		long int sum_st_dev = 0;
+		int count = 0;
+		for(int i = 0; i < sam.size(); i++)
+		{
+			if(sam[i].valid() && sam[i].size > 0 &&
+				sam[i].size < 2*mean )
+				 {
+				 	sum_st_dev += pow(abs(sam.at(i).size) - mean  ,2);
+				 	count++;
+				 }
+		}
+		sd = sqrt(sum_st_dev / count);
+		cout << "** Standard deviation = " << sd << endl;
+	}
 }
 
 void physicalCov(const char * path)
 {
+	cout << "Analisys of physical coverage ... " << flush;
 	// quantitative info of each base
 	vector<int> bases(ln, 0);
 
@@ -121,6 +124,7 @@ void physicalCov(const char * path)
 	}
 	wig(bases, ln, path);
 	bases.clear();
+	cout << "DONE.\n" << endl;
 }
 
 void sequenceCov(const char * pathCoverage, const char *pathAvLenght)
@@ -153,35 +157,31 @@ void sequenceCov(const char * pathCoverage, const char *pathAvLenght)
 	wig(lenght, ln, pathAvLenght);
 	count.clear();
 	lenght.clear();
-	cout << "DONE." << endl;
+	cout << "DONE.\n" << endl;
 
 }
 
 /* This function IMPLIED that the reads in the sam file
- * are sorted by name */
+ * are necessarily sorted by name */
 void multiCoverage(const char * path)
 {
-	cout << "Analisys of multiple reads coverage ... " << flush;
+	cout << "Analisys of MULTIPLE READ coverage ... " << flush;
 	vector<int> bases(ln, 0);
 	for(int i = 0; i < sam.size(); i++)
 	{
 		if(i > 0 && strcmp(sam[i].name, sam[i-1].name) == 0 &&
 			sam[i].num == sam[i-1].num)
-		{ // two reads are the same
+		{ // two reads are the same, also in the number /n
 			for (int j = 0; j < sam[i].lenght; j++)
-			{
 				bases[sam[i].pos + j] += sam[i].match[j];
-			}
 			for (int j = 0; j < sam[i-1].lenght; j++)
-			{
 				bases[sam[i-1].pos + j] += sam[i-1].match[j];
-			}
 		}
 	}
 
 	wig(bases, ln, path);
 	bases.clear();
-	cout << "DONE." << endl;
+	cout << "DONE.\n" << endl;
 }
 
 /* La funzione esegue correttamente il calcolo se:
@@ -198,19 +198,13 @@ void wrongMate(const char *path)
 	while (i < sam.size()-1)
 		if(sam[i].valid() && sam[i+1].valid()
 			&& !strcmp(sam[i].name, sam[i+1].name))
-			//&& sam[i].vFlag[2] == 0 
-			//&& sam[i].vFlag[3] == 0 )
 		{
 			if(sam[i].vFlag[4] == sam[i+1].vFlag[4])
-			{
+			{  // reads are in same directions
 				for(int j = 0; j < sam[i].lenght; j++)
-				{
 					base[sam[i].pos + j] += sam[i].match[j];
-				}
 				for(int j = 0; j < sam[i+1].lenght; j++)
-				{
 					base[sam[i+1].pos + j] += sam[i+1].match[j];
-				}
 			}
 			i += 2;
 		}
@@ -218,7 +212,7 @@ void wrongMate(const char *path)
 			i++;
 	wig(base, ln, path);
 	base.clear();
-	cout << "DONE." << endl;
+	cout << "DONE.\n" << endl;
 }
 
 void singleMate(const char *path)
@@ -226,30 +220,92 @@ void singleMate(const char *path)
 	cout << "Analisys of SINGLE mate ... " << flush;
 	vector<int> base(ln, 0);
 
-	int i = 0;
+	// check the 3 bit, that indicates if his
+	// mate is mapped
 	for(int i = 0; i < sam.size(); i++)
-	{
 		if(sam[i].valid() && sam[i].vFlag[3] == 1)
-		{
 			base[sam[i].pos]++;
-		}
-	}
+
 	wig(base, ln, path);
 	base.clear();
-	cout << "DONE." << endl;
+	cout << "DONE.\n" << endl;
 }
 
 
 int main(int argc, char *argv[])
 {
-	loadData("../bioinfo/illumina.sam", 2);
-	//multiCoverage("multiple.wig");
-	//st_dev();
-	physicalCov("physicalCoverage.wig");
-	sequenceCov("sequenceCoverage.wig", "averageLenght.wig");
-	wrongMate("wrong.wig");
-	
-	singleMate("single.wig");
+	bool caricato = false;
+	bool fine = false;
+	cout << "\n*****************************************" << endl;
+	cout << "******** Resequencing Project ***********" << endl;
+	cout << "*****************************************" << endl;
+	while(!fine)
+	{
+		cout << "----- SEGLI UNA FUNZIONE: (qualunque lettera per terminare) ----" << endl;
+		if(!caricato) cout << "ATTENZIONE: CARICARE PRIMA UN FILE SAM (1)!!"<< endl;
+		int in;
+		char *path = new char[100];
+		char *path2 = new char[100];
+		cout << "1. Carica File SAM" << endl;
+		cout << "2. Deviazione Standard" << endl;
+		cout << "3. Physical Coverage (file .wig)" << endl;
+		cout << "4. Sequence Coverage / Average Lenght (2 file .wig)" << endl;
+		cout << "5. Read multipli (file.wig)" << endl;
+		cout << "6. Stesso orientamento mate (file. wig)" << endl;
+		cout << "7. Mate mappati singolarmente (file .wig)" << endl;
+		cout << "COMANDO: ";
+		cin >> in;
 
+		switch(in)
+		{
+			case 1:
+				cout << "Scegli il percorso del file: ";
+				cin >> path;
+				loadData(path, 2);
+				caricato = true;
+				break;
+
+			case 2:
+				st_dev();
+				break;
+		
+			case 3:
+				cout << "Scegli il percorso del file .wig: ";
+				cin >> path;
+				physicalCov(path);
+				break;
+			
+			case 4:
+				cout << "Scegli il percorso del file (Sequence coverage) .wig: ";
+				cin >> path;
+				cout << "Scegli il percorso del file (Average Lenght) .wig: ";
+				cin >> path2;
+				sequenceCov(path, path2);
+				break;
+				
+			case 5:
+				cout << "Scegli il percorso del file .wig: ";
+				cin >> path;
+				multiCoverage(path);
+				break;
+
+			case 6:
+				cout << "Scegli il percorso del file .wig: ";
+				cin >> path;
+				wrongMate(path);
+				break;
+
+			case 7:
+				cout << "Scegli il percorso del file .wig: ";
+				cin >> path;
+				singleMate(path);
+				break;
+	
+			default:
+				cout << "Programma Terminato\n" << endl;
+				fine = true;
+				break;
+		}
+	}
 	return 0; 
 }

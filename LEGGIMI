@@ -1,0 +1,19 @@
+Istruzioni per l'esecuzione del programma:
+
+1. Compilare il sorgente main.cpp con un compilatore (c++, cpp, ecc).
+
+2. Da terminale, eseguire il programma compilato con ./
+
+3. La prima cosa da fare è selezionare il comando 1 per caricare il file SAM da analizzare, digitando successivamente il percorso del file
+
+4. Selezionare uno dei comandi da 2 a 7 per analizzare la caratteristica del file da studiare. Una volta terminata l'operazione, si otterrà un file .wig contenente le informazioni desiderate, e visualizzabili sul browser IGV.
+
+ATTENZIONE 1
+per eseguire correttamente la funzione del comando 5 (read multipli) bisogna caricare un file SAM che sia sortato per nome, altrimenti non si otterrà alcun risultato.
+
+ATTENZIONE 2
+Tutte le altre funzioni (2,3,4,6,7) sono state progettate tenendo conto del file originale illumina.sam messo a disposizione, poichè il flag di questo file contiene alcune informazioni utili per la corretta esecuzione delle funzioni.
+
+ATTENZIONE 3
+Il file illumina.sam contiene già la lunghezza degli inserti genomici e la media viene calcolata sulla base di questo numero.
+Quindi consiglio di usare in ogni caso il file illumina.sam per far eseguire correttamente tutte le funzioni del programma, ad eccezione della funzione 5.

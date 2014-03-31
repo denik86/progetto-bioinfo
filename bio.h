@@ -13,8 +13,8 @@ public:
 	char *mrnm;
 	int mpos;
 	int size;
-	char *seq;
-	char *qual;
+	//char *seq;
+	//char *qual;
 
 	int lenght;
 	vector<int> match;
@@ -36,7 +36,7 @@ bool SamLine::valid()
 void SamLine::readInfo(string l)
 {
 	char * line = stc(l);
-	name = strtok(line, "\t");
+	char * nameTemp = strtok(line, "\t");
 	flag = atoi(strtok(NULL, "\t"));
 	flagToBinaryVector();
 	chromo = strtok(NULL, "\t");
@@ -46,14 +46,16 @@ void SamLine::readInfo(string l)
 	mrnm = strtok(NULL, "\t");
 	mpos = atoi(strtok(NULL, "\t"));
 	size = atoi(strtok(NULL, "\t"));
-	seq = strtok(NULL, "\t");
-	qual = strtok(NULL, "\t");
+	//seq = strtok(NULL, "\t");
+	//qual = strtok(NULL, "\t");
 	
-	name = strtok(name, "/");
-	num = atoi(strtok(name, "/"));
-
+	name = strtok(nameTemp, "/");
+	char * a = strtok(NULL, "/");
+	if(a == NULL)
+		num = 0;
+	else
+		num = atoi(a);
 	lenght = cigarValues();
-
 }
 
 void SamLine::flagToBinaryVector()

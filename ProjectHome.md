@@ -1,0 +1,1 @@
+progetto che carica un file sam e studia i read presenti nel file facendone uno studio riassuntivo
